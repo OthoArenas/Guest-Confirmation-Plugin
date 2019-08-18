@@ -190,6 +190,7 @@ function confirmar_asistencia(){
         }
 
         mostrar_confirmacion();
+        enviar_correo();
 
         return ; 
     }
@@ -215,7 +216,6 @@ function confirmar_asistencia_singular(){
         $pases_adicionales = (int)$_POST['form-pases-adicionales-singular'];
         $pase_adicional = $_POST['form-pase-adicional-singular'];
         $mensaje = $_POST['form-message'];
-        $_SESSION['mensaje'] = $mensaje;
 
         if($pase_adicional=='si'){
             $pases_confirmados++;
@@ -242,7 +242,8 @@ function confirmar_asistencia_singular(){
                         'correo' => $correo,
                         'asistencia' => $asistencia,
                         'pases_confirmados' => $pases_confirmados,
-                        'modified_at' => $modified_at
+                        'modified_at' => $modified_at,
+                        'mensaje' => $mensaje
                     ), 
                     array(
                         'id' => $ids[$i]
@@ -268,6 +269,7 @@ function confirmar_asistencia_singular(){
         }
 
         mostrar_confirmacion_singular();
+        enviar_correo();
 
         return ; 
     }
@@ -404,37 +406,95 @@ function enviar_correo(){
     $es_familia = $invitados[0][es_familia];
     $correo = $invitados[0][correo];
     $familia = $invitados[0][familia];
-    $asistencia = $invitados[0][asistencia];
+    $asistencia = ucwords($invitados[0][asistencia]);
     $pases_confirmados = $invitados[0][pases_confirmados];
     $sqldate = getSQLDate($invitados[0][modified_at]);
     $fecha = getFecha($sqldate);
     $dia = $fecha[0];
     $hora = $fecha[1];   
-    $subject = 'Confirmación de asistencia'; 
+    $mensaje = $invitados[0][mensaje];
+    $subject = 'Confirmacion de asistencia';
+    $headers = "From: Wedding M&O <othoniel.salazar@weddingmyo.com>" . "\r\n";
+    $headers .= "Cc: othoniel.salazar@dsignstudio.com.mx, marividalloyda@icloud.com" . "\r\n";
+    $headers .= "MIME-Version: 1.0" . "\r\n";
+    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+    $logo = 'https://weddingmyo.com/wp-content/plugins/guests-confirmations/includes/images/Wedding-Logo.png?_t=1564541353';
+    $asanoha = 'https://weddingmyo.com/wp-content/plugins/guests-confirmations/includes/images/asanoha-400px.png?_t=1564541345';
+    $facebook = 'https://weddingmyo.com/wp-content/plugins/guests-confirmations/includes/images/facebook.png?_t=1564541345';
+    $linkedin = 'https://weddingmyo.com/wp-content/plugins/guests-confirmations/includes/images/linkedin%402x.png?_t=1564541353';
+    $twitter = 'https://weddingmyo.com/wp-content/plugins/guests-confirmations/includes/images/twitter.png?_t=1564541353';
 
-    if($es_familia == 'si' && $asistencia == 'si'){
-        ob_start();
-        $mensaje = get_template_part('Acepta_individual');
-        return ob_get_clean();
-        mail($correo,$subject,$mensaje);
+    if($es_familia == 'si' && $asistencia == 'Si'){
+        $message = "";
+        $dir = GC_PATH.'includes/';
+        if(file_exists($dir.'Acepta_familia.html')){
+            $message = file_get_contents($dir.'Acepta_familia.html');
+            $parts_to_mod = array("NOMBREFAMILIA", "ASISTENCIA","PASESCONFIRMADOS","FECHADECONFIRMACION","HORADECONFIRMACION","LOGOIMG","ASANOHAIMG","FACEBOOKIMG","LINKEDINIMG","TWITTERIMG");
+            $replace_with = array($familia, $asistencia,$pases_confirmados,$dia,$hora,$logo,$asanoha,$facebook,$linkedin,$twitter);
+            for($i=0; $i<count($parts_to_mod); $i++){
+                $message = str_replace($parts_to_mod[$i], $replace_with[$i], $message);
+            }
+            
+        }
+        if(mail($correo,$subject,$message,$headers)){
+            echo '<br>Se ha enviado el correo exitosamente';
+        }else{
+            echo '<br>No se ha enviado el correo';
+        }
     }
-    elseif($es_familia == 'si' && $asistencia == 'no'){
-        ob_start();
-        $mensaje = get_template_part('Rechaza_individual');
-        return ob_get_clean();
-        mail($correo,$subject,$mensaje);
+    elseif($es_familia == 'si' && $asistencia == 'No'){
+        $message = "";
+        $dir = GC_PATH.'includes/';
+        if(file_exists($dir.'Rechaza_familia.html')){
+            $message = file_get_contents($dir.'Rechaza_familia.html');
+            $parts_to_mod = array("NOMBREFAMILIA", "ASISTENCIA","PASESCONFIRMADOS","FECHADECONFIRMACION","HORADECONFIRMACION","LOGOIMG","ASANOHAIMG","FACEBOOKIMG","LINKEDINIMG","TWITTERIMG");
+            $replace_with = array($familia, $asistencia,$pases_confirmados,$dia,$hora,$logo,$asanoha,$facebook,$linkedin,$twitter);
+            for($i=0; $i<count($parts_to_mod); $i++){
+                $message = str_replace($parts_to_mod[$i], $replace_with[$i], $message);
+            }
+            
+        }
+        if(mail($correo,$subject,$message,$headers)){
+            echo '<br>Se ha enviado el correo exitosamente';
+        }else{
+            echo '<br>No se ha enviado el correo';
+        }
     }
-    elseif($es_familia == 'no' && $asistencia == 'si'){
-        ob_start();
-        $mensaje = get_template_part('Acepta_familia');
-        return ob_get_clean();
-        mail($correo,$subject,$mensaje);
+    elseif($es_familia == 'no' && $asistencia == 'Si'){
+        $message = "";
+        $dir = GC_PATH.'includes/';
+        if(file_exists($dir.'Acepta_individual.html')){
+            $message = file_get_contents($dir.'Acepta_individual.html');
+            $parts_to_mod = array("NOMBRESINGULAR", "ASISTENCIA","PASESCONFIRMADOS","FECHADECONFIRMACION","HORADECONFIRMACION","LOGOIMG","ASANOHAIMG","FACEBOOKIMG","LINKEDINIMG","TWITTERIMG","MENSAJESINGULAR");
+            $replace_with = array($nombre, $asistencia,$pases_confirmados,$dia,$hora,$logo,$asanoha,$facebook,$linkedin,$twitter,$mensaje);
+            for($i=0; $i<count($parts_to_mod); $i++){
+                $message = str_replace($parts_to_mod[$i], $replace_with[$i], $message);
+            }
+            
+        }
+        if(mail($correo,$subject,$message,$headers)){
+            echo '<br>Se ha enviado el correo exitosamente';
+        }else{
+            echo '<br>No se ha enviado el correo';
+        }
     }
-    elseif($es_familia == 'no' && $asistencia == 'no'){
-        ob_start();
-        $mensaje = get_template_part('Rechaza_familia');
-        return ob_get_clean();
-        mail($correo,$subject,$mensaje);
+    elseif($es_familia == 'no' && $asistencia == 'No'){
+        $message = "";
+        $dir = GC_PATH.'includes/';
+        if(file_exists($dir.'Rechaza_individual.html')){
+            $message = file_get_contents($dir.'Rechaza_individual.html');
+            $parts_to_mod = array("NOMBRESINGULAR", "ASISTENCIA","PASESCONFIRMADOS","FECHADECONFIRMACION","HORADECONFIRMACION","LOGOIMG","ASANOHAIMG","FACEBOOKIMG","LINKEDINIMG","TWITTERIMG","MENSAJESINGULAR");
+            $replace_with = array($nombre, $asistencia,$pases_confirmados,$dia,$hora,$logo,$asanoha,$facebook,$linkedin,$twitter,$mensaje);
+            for($i=0; $i<count($parts_to_mod); $i++){
+                $message = str_replace($parts_to_mod[$i], $replace_with[$i], $message);
+            }
+            
+        }
+        if(mail($correo,$subject,$message,$headers)){
+            echo '<br>Se ha enviado el correo exitosamente';
+        }else{
+            echo '<br>No se ha enviado el correo';
+        }
     }
 }
 
@@ -463,6 +523,7 @@ function GR_database_init()
         modified_at datetime NOT NULL,
         pase_adicional varchar(2),
         pases_adicionales smallint(4) NOT NULL,
+        mensaje varchar(500),
         UNIQUE (id)
         ) $charset_collate;";
     // La función dbDelta permite crear tablas de manera segura se
@@ -942,82 +1003,4 @@ function remove_show_confirmation_page() {
 
 }
 
-/* function guest_register_widget_form() {
-    ob_start();
-    get_template_part('insurance-widget-form');
-    return ob_get_clean();   
-} 
-add_shortcode( 'guest-register-widget-form', 'guest_register_widget_form' ); */
-
-/* function insurance_calc(){
-
-    if(isset($_POST["submit"]) || isset($_POST['send'])){
-        $name = $_POST['form-name'];
-        $email = $_POST['form-email'];
-        $phone = $_POST['form-phone'];
-        $address = $_POST['form-address'];
-        $state = $_POST['form-state'];
-        $city = $_POST['form-city'];
-        $zc = $_POST['form-zc'];
-        $age = $_POST['form-age'];
-        $gender = $_POST['form-gender'];
-        $ocupation = $_POST['form-ocupation'];
-        $initial_value = 1000;
-        $isSmoker = 0;
-        $isDrunkard = 0;
-        $isDriver = 0;
-        $isDesease = 0;
-        $ageCharge = 0;
-        $genderCharge = 0;
-    
-        foreach ($_POST['conditions'] as $condition) {
-            $isSmoker = ($condition == 'Smoker' || $isSmoker != 0 ? 0.15*$initial_value : 0);
-            $isDrunkard = ($condition == 'Drunkard' || $isDrunkard != 0 ? 0.20*$initial_value : 0);
-            $isDriver = ($condition == 'Driver' || $isDriver != 0 ? 0.05*$initial_value : 0);
-            $isDesease = ($condition == 'Chronic Disease' || $isDesease != 0 ? 0.30*$initial_value : 0);
-        }
-    
-        $ageCharge = ($age>=40 ? 0.20*$initial_value : 0);
-        $genderCharge = ($gender=="male" ? 0.20*$initial_value : 0.10*$initial_value);
-        
-        echo '<h3>Hi, '. $name .'!</h3>';
-        echo '<h4>Personal Data: </h4>';
-        echo '<ul>
-        <li>Email: '.$email.'</li>
-        <li>Phone Number: '.$phone.'</li>
-        <li>Address: '.$address.'</li>
-        <li>State: '.$state.'</li>
-        <li>City: '.$city.'</li>
-        <li>Zip Code: '.$zc.'</li>
-        </ul>';
-        echo '<h4>Acording to the data you chose: </h4>';
-        echo '<ul>
-        <li>Age: '.$age.'</li>
-        <li>Gender: '.$gender.'</li>
-        <li>Ocupation: '.$ocupation.'</li>';
-        if(!empty($_POST["conditions"])){
-            echo '<h4>Conditions: </h4>';
-            foreach ($_POST['conditions'] as $condition) {
-                echo '<li>'.$condition.'</li>';
-            }
-        }else{
-            echo '<h4>You didn\'t select any option</h4>';
-        }
-    
-        echo '</ul>';
-    
-        echo '<h4>You must pay: </h4>';
-    
-        $totalValue = $initial_value + $isDesease + $isDriver + $isDrunkard + $isSmoker + $ageCharge + $genderCharge;
-    
-        echo '<h3>$ '.number_format($totalValue,2,'.',',').' USD</h3>';
-    }
-}
-
-if(isset($_POST['submit'])){
-    add_filter( 'the_content' , 'insurance_calc');
-}
-elseif(isset($_POST['send'])){
-    add_filter( 'widget_text' , 'insurance_calc');
-} */
 ?>

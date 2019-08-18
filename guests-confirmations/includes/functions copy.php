@@ -29,6 +29,7 @@ function guest_register_form() {
         $pases_confirmados = (int)$_POST['form-pases_confirmados'];
         $created_at = getSQLDate();
         $pase_adicional = $_POST['form-pase-adicional'];
+        $pases_adicionales = (int)$_POST['form-pases-adicionales'];
         $wpdb->insert(
             $tabla_invitados,
             array(
@@ -42,7 +43,8 @@ function guest_register_form() {
                 'asistencia' => $asistencia,
                 'pases_confirmados' => $pases_confirmados,
                 'created_at' => $created_at,
-                'pase_adicional' => $pase_adicional
+                'pase_adicional' => $pase_adicional,
+                'pases_adicionales' => $pases_adicionales
             )
         );
         echo "<p class='exito'><b>Los datos del invitado han sido registrados.</b><p>";
@@ -131,6 +133,12 @@ function confirmar_asistencia(){
         $asistencia = $_POST['form-assistance-asistencia'];
         $correo = $_POST['confirm_email'];
         $pases_confirmados = (int)$_POST['form-assistance-pases_confirmados'];
+        $pases_adicionales = (int)$_POST['form-pases-adicionales'];
+        $pase_adicional = $_POST['form-pase-adicional'];
+        if($pase_adicional=='si'){
+            $pases_confirmados++;
+        }
+        $pases_confirmados += $pases_adicionales;
 
         for ($i=0; $i < count($invitados) ; $i++) { 
             $ids[] = (int)$invitados[$i][id];
@@ -182,6 +190,7 @@ function confirmar_asistencia(){
         }
 
         mostrar_confirmacion();
+        enviar_correo();
 
         return ; 
     }
@@ -204,10 +213,15 @@ function confirmar_asistencia_singular(){
         $asistencia = $_POST['form-singular-assistance'];
         $correo = $_POST['confirm_singular_email'];
         $pases_confirmados = (int)$_POST['form-singular-pases_confirmados'];
-        $asistenciaAdicional = $_POST['form-pase-adicional-singular'];
-        if($asistenciaAdicional=='si'){
+        $pases_adicionales = (int)$_POST['form-pases-adicionales-singular'];
+        $pase_adicional = $_POST['form-pase-adicional-singular'];
+        $mensaje = $_POST['form-message'];
+        $_SESSION['mensaje'] = $mensaje;
+
+        if($pase_adicional=='si'){
             $pases_confirmados++;
         }
+        $pases_confirmados += $pases_adicionales;
 
         for ($i=0; $i < count($invitados) ; $i++) { 
             $ids[] = (int)$invitados[$i][id];
@@ -255,6 +269,7 @@ function confirmar_asistencia_singular(){
         }
 
         mostrar_confirmacion_singular();
+        enviar_correo();
 
         return ; 
     }
@@ -384,6 +399,47 @@ function modificar_confirmacion_singular(){
 }
 add_shortcode( 'modify-confirmation-singular-form', 'modificar_confirmacion_singular' ); 
 
+function enviar_correo(){
+    $invitados = $_SESSION['invitados'];
+    $nombre = $invitados[0][nombre];
+    $apellidos = $invitados[0][apellidos];
+    $es_familia = $invitados[0][es_familia];
+    $correo = $invitados[0][correo];
+    $familia = $invitados[0][familia];
+    $asistencia = $invitados[0][asistencia];
+    $pases_confirmados = $invitados[0][pases_confirmados];
+    $sqldate = getSQLDate($invitados[0][modified_at]);
+    $fecha = getFecha($sqldate);
+    $dia = $fecha[0];
+    $hora = $fecha[1];   
+    $subject = 'Confirmación de asistencia'; 
+
+    if($es_familia == 'si' && $asistencia == 'si'){
+        ob_start();
+        $mensaje = get_template_part('Acepta_individual');
+        mail($correo,$subject,$mensaje);
+        return ob_get_clean();
+    }
+    elseif($es_familia == 'si' && $asistencia == 'no'){
+        ob_start();
+        $mensaje = get_template_part('Rechaza_individual');
+        mail($correo,$subject,$mensaje);
+        return ob_get_clean();
+    }
+    elseif($es_familia == 'no' && $asistencia == 'si'){
+        ob_start();
+        $mensaje = get_template_part('Acepta_familia');
+        mail($correo,$subject,$mensaje);
+        return ob_get_clean();
+    }
+    elseif($es_familia == 'no' && $asistencia == 'no'){
+        ob_start();
+        $mensaje = get_template_part('Rechaza_familia');
+        mail($correo,$subject,$mensaje);
+        return ob_get_clean();
+    }
+}
+
 /* Esta función es llamada desde guest-confirmations.php */
 function GR_database_init() 
 {
@@ -408,6 +464,7 @@ function GR_database_init()
         created_at datetime NOT NULL,
         modified_at datetime NOT NULL,
         pase_adicional varchar(2),
+        pases_adicionales smallint(4) NOT NULL,
         UNIQUE (id)
         ) $charset_collate;";
     // La función dbDelta permite crear tablas de manera segura se
@@ -472,6 +529,7 @@ function add_registration_page() {
         // Create post object
         $_p = array();
         $_p['post_title'] = $the_page_title;
+        $_p['post_name'] = $the_page_name;
         $_p['post_content'] = "[guest-register-form]";
         $_p['post_status'] = 'publish';
         $_p['post_type'] = 'page';
@@ -544,6 +602,7 @@ function add_modify_singular_confirmation_page() {
         // Create post object
         $_q = array();
         $_q['post_title'] = $the_page_title;
+        $_q['post_name'] = $the_page_name;
         $_q['post_content'] = "[modify-confirmation-singular-form]";
         $_q['post_status'] = 'publish';
         $_q['post_type'] = 'page';
@@ -616,6 +675,7 @@ function add_modify_confirmation_page() {
         // Create post object
         $_p = array();
         $_p['post_title'] = $the_page_title;
+        $_p['post_name'] = $the_page_name;
         $_p['post_content'] = "[modify-confirmation-form]";
         $_p['post_status'] = 'publish';
         $_p['post_type'] = 'page';
@@ -688,6 +748,7 @@ function add_singular_confirmation_page() {
         // Create post object
         $_p = array();
         $_p['post_title'] = $the_page_title;
+        $_p['post_name'] = $the_page_name;
         $_p['post_content'] = "[singular-confirmation-form]";
         $_p['post_status'] = 'publish';
         $_p['post_type'] = 'page';
@@ -760,6 +821,7 @@ function add_confirmation_page() {
         // Create post object
         $_r = array();
         $_r['post_title'] = $the_page_title;
+        $_r['post_name'] = $the_page_name;
         $_r['post_content'] = "[guest-id-form]";
         $_r['post_status'] = 'publish';
         $_r['post_type'] = 'page';
@@ -832,6 +894,7 @@ function add_show_confirmation_page() {
         // Create post object
         $_p = array();
         $_p['post_title'] = $the_page_title;
+        $_p['post_name'] = $the_page_name;
         $_p['post_content'] = "[guest-confirmation-form]";
         $_p['post_status'] = 'publish';
         $_p['post_type'] = 'page';
